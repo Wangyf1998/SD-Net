@@ -193,26 +193,26 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
             semantics_miss_labels = pad_tensor(semantics_miss_labels, padding_value=-1, use_mask=False)
             ret.update({ kfg.SEMANTICS_MISS_LABELS: semantics_miss_labels })
 
-        if kfg.G_EMOTION_IDS in batched_inputs[0]:
-            g_emotion_ids = [x[kfg.G_EMOTION_IDS] for x in batched_inputs]
-
-            g_emotion_ids = pad_tensor(g_emotion_ids, padding_value=1, use_mask=False)
-            ret.update({kfg.G_EMOTION_IDS: g_emotion_ids})
-
-        if kfg.G_EMO_TYPE in batched_inputs[0]:
-            g_emo_type = [x[kfg.G_EMO_TYPE] for x in batched_inputs]
-            g_emo_type = pad_tensor(g_emo_type, padding_value=1, use_mask=False)
-            ret.update({kfg.G_EMO_TYPE: g_emo_type})
-
-        if kfg.G_EMO_WORD_IDS in batched_inputs[0]:
-            g_emo_word_ids = [x[kfg.G_EMO_WORD_IDS] for x in batched_inputs]
-            g_emo_word_ids = pad_tensor(g_emo_word_ids, padding_value=1, use_mask=False)
-            ret.update({kfg.G_EMO_WORD_IDS: g_emo_word_ids})
+        # if kfg.G_EMOTION_IDS in batched_inputs[0]:
+        #     g_emotion_ids = [x[kfg.G_EMOTION_IDS] for x in batched_inputs]
+        #
+        #     g_emotion_ids = pad_tensor(g_emotion_ids, padding_value=1, use_mask=False)
+        #     ret.update({kfg.G_EMOTION_IDS: g_emotion_ids})
+        #
+        # if kfg.G_EMO_TYPE in batched_inputs[0]:
+        #     g_emo_type = [x[kfg.G_EMO_TYPE] for x in batched_inputs]
+        #     g_emo_type = pad_tensor(g_emo_type, padding_value=1, use_mask=False)
+        #     ret.update({kfg.G_EMO_TYPE: g_emo_type})
+        #
+        # if kfg.G_EMO_WORD_IDS in batched_inputs[0]:
+        #     g_emo_word_ids = [x[kfg.G_EMO_WORD_IDS] for x in batched_inputs]
+        #     g_emo_word_ids = pad_tensor(g_emo_word_ids, padding_value=1, use_mask=False)
+        #     ret.update({kfg.G_EMO_WORD_IDS: g_emo_word_ids})
 
         if kfg.G_ATTR_IDS in batched_inputs[0]:
             g_attr_ids = [x[kfg.G_ATTR_IDS] for x in batched_inputs]
-            g_attr_ids = pad_tensor(g_attr_ids, padding_value=1, use_mask=False)
-            ret.update({kfg.G_ATTR_IDS: g_attr_ids})
+            g_attr_ids, attr_mask = pad_tensor(g_attr_ids, padding_value=1, use_mask=False)
+            ret.update({kfg.G_ATTR_IDS: g_attr_ids, kfg.ATTR_MASK: attr_mask})
 
 
 
