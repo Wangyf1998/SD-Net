@@ -32,6 +32,8 @@ class TokenBaseEmbedding(nn.Module):
         self.embeddings_dropout = kwargs.pop("embeddings_dropout", None)
         self.embeddings_pos = kwargs.pop("embeddings_pos", None)
         self.embeddings_token_type = kwargs.pop('embeddings_token_type', None)
+        self.position = nn.Parameter(torch.FloatTensor(26, dim))
+        nn.init.xavier_uniform_(self.position)
 
     @classmethod
     def from_config(cls, cfg):
@@ -103,6 +105,10 @@ class TokenBaseEmbedding(nn.Module):
         if kfg.G_ATTR_IDS in batched_inputs:
             g_attr_ids = torch.squeeze(batched_inputs[kfg.G_ATTR_IDS])
             g_attr_embed = self.embeddings(g_attr_ids)
+            semantics_pos_pred = g_attr_embed @ self.position.t()
+            semantics_pos_prob = self.softmax(semantics_pos_pred)
+            position = semantics_pos_prob @ self.position
+            g_attr_embed = g_attr_embed + position
             ret.update({
                 kfg.G_ATTR_EMBED: g_attr_embed
             }

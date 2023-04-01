@@ -101,8 +101,8 @@ class COSNetEncoder(nn.Module):
     def forward(self, batched_inputs, mode=None):
         ret = {}
         # batch_size = batched_inputs[kfg.ATT_FEATS].size(0)
-        if batched_inputs['EMO_TOKEN'] is None:
-            emotion_token = torch.zeros(11, 512)
+        # if batched_inputs['EMO_TOKEN'] is None:
+        #     emotion_token = torch.zeros(11, 512)
             # 11 = 9+2，0—8是9种情感分类，9-10是pos/neg
         if mode == None or mode == 'v':
             vfeats = batched_inputs[kfg.ATT_FEATS]
@@ -110,12 +110,12 @@ class COSNetEncoder(nn.Module):
             ext_vmasks = torch.cat([ext_vmasks[:, :, :, 0:1], ext_vmasks], dim=-1)
             ret.update({kfg.EXT_ATT_MASKS: ext_vmasks})
 
-            emo_label = batched_inputs['G_EMO_LABEL']
-            emo_list = list(chain(*emo_label))
-            # 把emo_lable转化为一个扁平的list
-            for i in range(batch_size):
-                label = emo_list(i)
-                vfeats.
+            # emo_label = batched_inputs['G_EMO_LABEL']
+            # emo_list = list(chain(*emo_label))
+            # # 把emo_lable转化为一个扁平的list
+            # for i in range(batch_size):
+            #     label = emo_list(i)
+            #     vfeats.
 
             gfeats = []
             gfeats.append(vfeats[:, 0])
@@ -129,9 +129,11 @@ class COSNetEncoder(nn.Module):
             encoder_vfeats = torch.cat([gfeats.unsqueeze(1), encoder_vfeats[:, 1:]], dim=1)
             ret.update({ kfg.ATT_FEATS: encoder_vfeats })
 
+
             # semantics_ids = batched_inputs[kfg.SEMANTICS_IDS]
-            # semantics_mask = batched_inputs[kfg.SEMANTICS_MASK]
-            # #
+            # attr_mask = batched_inputs[kfg.ATTR_MASK]
+            # attr_mask.unsqueeze
+
             # semantics_embed = self.embeddings(semantics_ids)
             # slot_embed = self.slot_embeddings(self.slot)
             # slot_embed = slot_embed.expand(semantics_embed.shape[0], slot_embed.shape[1], slot_embed.shape[2])
