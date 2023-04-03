@@ -76,16 +76,16 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
         ext_g_tmasks = ext_g_tmasks.unsqueeze(1)
         ext_g_tmasks = (1.0 - ext_g_tmasks) * -10000.0
 
-        # ext_e_masks = torch.tril(torch.ones(
-        #     (seq_length, 5), dtype=tmasks.dtype, device=tmasks.device))
-        # # TODO:这里5是暂定的concept数量，后续要写到配置文件里去
-        # emasks = torch.ones(tmasks.size(0), 5).to(tmasks)
-        # ext_e_masks = ext_e_masks.unsqueeze(0).expand(
-        #     (tmasks.size(0), seq_length, 5))
-        # ext_e_masks = ext_e_masks * emasks.unsqueeze(1)
-        # ext_e_masks = ext_e_masks.to(dtype=next(self.parameters()).dtype)
-        # ext_e_masks = ext_e_masks.unsqueeze(1)
-        # ext_e_masks = (1.0 - ext_e_masks) * -10000.0
+        ext_e_masks = torch.tril(torch.ones(
+            (seq_length, 5), dtype=tmasks.dtype, device=tmasks.device))
+        # TODO:这里5是暂定的concept数量，后续要写到配置文件里去
+        emasks = torch.ones(tmasks.size(0), 5).to(tmasks)
+        ext_e_masks = ext_e_masks.unsqueeze(0).expand(
+            (tmasks.size(0), seq_length, 5))
+        ext_e_masks = ext_e_masks * emasks.unsqueeze(1)
+        ext_e_masks = ext_e_masks.to(dtype=next(self.parameters()).dtype)
+        ext_e_masks = ext_e_masks.unsqueeze(1)
+        ext_e_masks = (1.0 - ext_e_masks) * -10000.0
 
 
 
@@ -100,7 +100,7 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
             kfg.EXT_G_TOKENS_MASKS: ext_g_tmasks,
             kfg.ATT_MASKS: vmasks,
             kfg.EXT_ATT_MASKS: ext_vmasks,
-            # kfg.EXT_EMO_MASKS: ext_e_masks
+            kfg.EXT_EMO_MASKS: ext_e_masks
         }
 
     def _forward(self, batched_inputs):

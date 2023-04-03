@@ -122,8 +122,10 @@ class BeamSearcher(DecodeStrategy):
                     kfg.EXT_G_TOKENS_MASKS,
                     kfg.G_TOKENS_TYPE,
                     kfg.SEMANTICS_FEATS,
+                    kfg.G_ATTR_EMBED,
                     kfg.EXT_SEMANTICS_MASKS,
-                    kfg.EXT_EMO_MASKS
+                    kfg.EXT_EMO_MASKS,
+                    kfg.EXT_ATTR_MASK
                 }
                 for key in expand_keys:
                     if key in inputs:

@@ -62,6 +62,8 @@ class COSNetEncoder(nn.Module):
             nn.Dropout(0.1),
         )
 
+        self.embeddings_emo = nn.Embedding(20985, 512)
+
         self.slot = nn.Parameter(torch.FloatTensor(1, slot_size, hidden_size))
         nn.init.xavier_uniform_(self.slot)
 
@@ -127,12 +129,16 @@ class COSNetEncoder(nn.Module):
             gfeats = torch.cat(gfeats, dim=-1)
             gfeats = self.gvfeat_embed(gfeats)
             encoder_vfeats = torch.cat([gfeats.unsqueeze(1), encoder_vfeats[:, 1:]], dim=1)
-            ret.update({ kfg.ATT_FEATS: encoder_vfeats })
+            ret.update({kfg.ATT_FEATS: encoder_vfeats })
 
 
             # semantics_ids = batched_inputs[kfg.SEMANTICS_IDS]
-            # attr_mask = batched_inputs[kfg.ATTR_MASK]
-            # attr_mask.unsqueeze
+            attr_mask = batched_inputs[kfg.ATTR_MASK]
+            attr_mask = (1.0 - attr_mask) * - 10000.0
+            attr_mask = attr_mask.unsqueeze(1).unsqueeze(2)
+            ret.update({kfg.EXT_ATTR_MASK: attr_mask})
+
+
 
             # semantics_embed = self.embeddings(semantics_ids)
             # slot_embed = self.slot_embeddings(self.slot)

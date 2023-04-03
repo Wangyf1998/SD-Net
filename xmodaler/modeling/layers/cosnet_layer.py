@@ -103,8 +103,8 @@ class COSJointAttention(nn.Module):
         hidden_states, 
         attention_mask, 
         v_feats,
-        v_attention_mask,
         emo_word,
+        v_attention_mask,
         e_attention_mask,
         history_states=None    
     ):
@@ -120,39 +120,39 @@ class COSJointAttention(nn.Module):
     #########################################################
         # 以下版本是存储在3.13/330下的代码
 
-        v_mixed_key_layer, v_mixed_value_layer = self.v_attn(v_feats).split(self.all_head_size, dim=2)
-        e_mixed_key_layer = self.key(emo_word)
-        e_mixed_value_layer = self.value(emo_word)
-        l_outputs = self.attn(mixed_query_layer, mixed_key_layer, mixed_value_layer, attention_mask)
-        l_outputs = self.c_proj(l_outputs)
-        le_outputs = self.attn(l_outputs, e_mixed_key_layer, e_mixed_value_layer, e_attention_mask)
-        v_outputs = self.attn(mixed_query_layer, v_mixed_key_layer, v_mixed_value_layer, v_attention_mask)
-        # e_outputs = self.attn(mixed_query_layer, e_mixed_key_layer, e_mixed_value_layer, attention_mask=None)
-        # v_outputs = self.vo_proj(v_outputs)
-        gate_t = self.gate_attn(torch.cat([le_outputs, l_outputs], dim=-1))
-        gate = self.gate_attn(torch.cat([gate_t, v_outputs], dim=-1))
-        # gate = self.gate_attn(l_outputs)
-        gate = self.gate(gate)
-        outputs = gate * gate_t + (1 - gate) * v_outputs
-        outputs = self.resid_dropout(outputs)
-        outputs = self.LayerNorm(outputs + input_tensor)
-##################################################################
-        # 下面的结果记录在330b里
         # v_mixed_key_layer, v_mixed_value_layer = self.v_attn(v_feats).split(self.all_head_size, dim=2)
-        # o_mixed_key_layer, o_mixed_value_layer = self.o_attn(emo_word).split(self.all_head_size, dim=2)
+        # e_mixed_key_layer = self.key(emo_word)
+        # e_mixed_value_layer = self.value(emo_word)
         # l_outputs = self.attn(mixed_query_layer, mixed_key_layer, mixed_value_layer, attention_mask)
         # l_outputs = self.c_proj(l_outputs)
-        # o_outputs = self.attn(mixed_query_layer, o_mixed_key_layer, o_mixed_value_layer, e_attention_mask)
+        # le_outputs = self.attn(l_outputs, e_mixed_key_layer, e_mixed_value_layer, e_attention_mask)
         # v_outputs = self.attn(mixed_query_layer, v_mixed_key_layer, v_mixed_value_layer, v_attention_mask)
-        # vo_outputs = self.vo_proj(torch.cat([v_outputs, o_outputs], dim=-1))
-        # gate = self.gate_attn(torch.cat([l_outputs, vo_outputs], dim=-1))
+        # # e_outputs = self.attn(mixed_query_layer, e_mixed_key_layer, e_mixed_value_layer, attention_mask=None)
+        # # v_outputs = self.vo_proj(v_outputs)
+        # gate_t = self.gate_attn(torch.cat([le_outputs, l_outputs], dim=-1))
+        # gate = self.gate_attn(torch.cat([gate_t, v_outputs], dim=-1))
+        # # gate = self.gate_attn(l_outputs)
         # gate = self.gate(gate)
-        # outputs = gate * gate + (1 - gate) * v_outputs
+        # outputs = gate * gate_t + (1 - gate) * v_outputs
         # outputs = self.resid_dropout(outputs)
         # outputs = self.LayerNorm(outputs + input_tensor)
-        #
-        #
-        # return outputs
+##################################################################
+        # 下面的结果记录在330b里
+        v_mixed_key_layer, v_mixed_value_layer = self.v_attn(v_feats).split(self.all_head_size, dim=2)
+        o_mixed_key_layer, o_mixed_value_layer = self.o_attn(emo_word).split(self.all_head_size, dim=2)
+        l_outputs = self.attn(mixed_query_layer, mixed_key_layer, mixed_value_layer, attention_mask)
+        l_outputs = self.c_proj(l_outputs)
+        o_outputs = self.attn(mixed_query_layer, o_mixed_key_layer, o_mixed_value_layer, e_attention_mask)
+        v_outputs = self.attn(mixed_query_layer, v_mixed_key_layer, v_mixed_value_layer, v_attention_mask)
+        vo_outputs = self.vo_proj(torch.cat([v_outputs, o_outputs], dim=-1))
+        gate = self.gate_attn(torch.cat([l_outputs, vo_outputs], dim=-1))
+        gate = self.gate(gate)
+        outputs = gate * gate + (1 - gate) * v_outputs
+        outputs = self.resid_dropout(outputs)
+        outputs = self.LayerNorm(outputs + input_tensor)
+
+
+        return outputs
 
 class COSBertIntermediate(nn.Module):
     @configurable
@@ -250,8 +250,8 @@ class COSNetDecBlock(nn.Module):
             lang_feats,
             lang_attention_mask,
             v_feats,
-            v_attention_mask,
             emo_word,
+            v_attention_mask,
             emo_attention_mask,
             t_history_states
         )

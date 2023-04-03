@@ -56,6 +56,7 @@ class COSNetDecoder(Decoder):
         # emo_word_origin = batched_inputs[kfg.G_EMO_WORD_EMBED]
         history_states = batched_inputs.get(kfg.HISTORY_STATES, None)
         ext_e_masks = batched_inputs[kfg.EXT_EMO_MASKS]
+        ext_attr_masks = batched_inputs[kfg.EXT_ATTR_MASK]
 
         g_tfeats_arr = []
         g_tfeats = batched_inputs[kfg.G_TOKEN_EMBED]
@@ -66,7 +67,7 @@ class COSNetDecoder(Decoder):
         if kfg.TIME_STEP in batched_inputs:
             time_step = batched_inputs[kfg.TIME_STEP]
             ext_g_tmasks = ext_g_tmasks[:,:, time_step:time_step+1, 0:time_step+1]
-            ext_e_masks = ext_e_masks[:,:, time_step:time_step+1, :]
+            # ext_e_masks = ext_e_masks[:,:, time_step:time_step+1, :]
             if kfg.HISTORY_STATES not in batched_inputs:
                 shape = list(g_tfeats.size())
                 shape[1] = 0
@@ -91,7 +92,7 @@ class COSNetDecoder(Decoder):
                     attr,
                     ext_g_tmasks,
                     ext_vmasks,
-                    ext_e_masks,
+                    ext_attr_masks,
                     history_states[i])
                 g_tfeats_arr.append(g_tfeats)
 

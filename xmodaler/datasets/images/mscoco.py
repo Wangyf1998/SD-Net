@@ -98,6 +98,7 @@ class MSCoCoDataset:
         #     return datalist
 
         datalist = pickle.load(open(self.anno_file, 'rb'), encoding='bytes')
+        datalist = datalist[:100]
         datalist = self._preprocess_datalist(datalist)
 
         # sentiment_word = _load_json_file("/home/wyf/open_source_dataset/for_debug/new_3.18/for_debug_sentiment_words.json")

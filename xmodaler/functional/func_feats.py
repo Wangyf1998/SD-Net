@@ -11,7 +11,7 @@ from torch.nn.utils.rnn import pad_sequence
 def pad_tensor(tensor, padding_value, use_mask):
     if isinstance(tensor[0], list):
         tensor = list(itertools.chain.from_iterable(tensor))
-
+    tensor = [torch.zeros([5], dtype=torch.int32) if i.dim() == 0 else i for i in tensor]
     out = pad_sequence(tensor, batch_first=True, padding_value=padding_value)
     if use_mask:
         lengths = [t.size(0) for t in tensor]
@@ -23,6 +23,28 @@ def pad_tensor(tensor, padding_value, use_mask):
     else:
         return out
 
+def pad_emo(tensor, padding_value, use_mask):
+    if isinstance(tensor[0], list):
+        tensor = list(itertools.chain.from_iterable(tensor))
+    tensor = [torch.zeros([5], dtype=torch.int32) if i.dim() == 0 else i for i in tensor]
+    # for item in tensor:
+    #     print(item.size())
+    #     if item.numel() == 0:
+    #         print('Empty tensor detected')
+
+    out = pad_sequence(tensor, batch_first=True, padding_value=padding_value)
+    if use_mask:
+        lengths = [t.size(0) for t in tensor]
+        max_lengths = max(lengths)
+        mask = torch.zeros((out.size(0), max_lengths), dtype=torch.float32)
+        for i, item in enumerate(tensor):
+            if torch.all(item == 0):
+                mask[i, :] = 0
+            else:
+                mask[i, 0:lengths[i]] = 1
+        return out, mask
+    else:
+        return out
 def dict_to_cuda(input_dict):
     for key in input_dict:
         if isinstance(input_dict[key], list):

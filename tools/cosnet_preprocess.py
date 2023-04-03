@@ -179,11 +179,11 @@ def encode_captions(imgs, params, wtoi):
         # 将concept_label编码成词表形式，每一个情感倾向对应的concept列表长度都为5
         output_list = {}
         for k, v in concept.items():
-            # 把补上的用-1来替代
-            output_Li = np.zeros((1, 5) - 1, dtype='int32')
+            # 不再固定为5，而是依照attr的长度确定
+            output_Li = np.zeros((1, len(v)), dtype='int32')
             for num, word in enumerate(v):
-                output_Li[0, num] = wtoi[word]
-            output_list[k] = (output_Li)
+                output_Li[num] = wtoi[word]
+            output_list[k] = output_Li
         return output_list
 
     for img in imgs:
@@ -310,7 +310,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # input json
-    parser.add_argument('--input_json', default="/home/wyf/open_source_dataset/for_debug/data_10.json", help='input json file to process into hdf5')
+    parser.add_argument('--input_json', default="/home/wyf/artemis_fullcombined.json", help='input json file to process into hdf5')
     parser.add_argument('--output_dir', default='.', help='output directory')
     parser.add_argument('--input_emotion', default = "/home/wyf/emotion_embedding/", help='get emotion embedding file')
 

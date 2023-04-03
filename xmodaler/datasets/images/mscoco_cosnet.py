@@ -209,12 +209,15 @@ class MSCoCoCOSNetDataset(MSCoCoDataset):
                 emo_label = dataset_dict['emo_label'][i]
                 if emo_label in [1,2,3,4]:
                     word = datasetdict['attr_gt'].get(0, supp)
+                    word = np.squeeze(word)
                     attr_gt.append(word)
                 elif emo_label in [5,6,7,8]:
                     word = datasetdict['attr_gt'].get(1, supp)
+                    word = np.squeeze(word)
                     attr_gt.append(word)
                 elif emo_label == 0:
                     word = datasetdict['attr_gt'].get(2, supp)
+                    word = np.squeeze(word)
                     attr_gt.append(word)
             return attr_gt
         attr_gt = get_emoword(dataset_dict, selects)

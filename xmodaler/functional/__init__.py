@@ -17,6 +17,7 @@ from .func_feats import (
     dict_as_tensor,
     dict_to_cuda,
     pad_tensor,
+    pad_emo,
     expand_tensor,
     clip_v_inputs,
     clip_t_inputs

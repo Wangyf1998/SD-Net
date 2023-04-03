@@ -15,7 +15,7 @@ from abc import ABCMeta, abstractmethod
 from xmodaler.config import configurable
 from xmodaler.config import CfgNode as CN
 from xmodaler.config import kfg
-from xmodaler.functional import pad_tensor, dict_to_cuda, flat_list_of_lists
+from xmodaler.functional import pad_tensor, dict_to_cuda, flat_list_of_lists, pad_emo
 from ..embedding import build_embeddings
 from ..encoder import build_encoder, add_encoder_config
 from ..decoder import build_decoder, add_decoder_config
@@ -211,7 +211,7 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
 
         if kfg.G_ATTR_IDS in batched_inputs[0]:
             g_attr_ids = [x[kfg.G_ATTR_IDS] for x in batched_inputs]
-            g_attr_ids, attr_mask = pad_tensor(g_attr_ids, padding_value=0, use_mask=True)
+            g_attr_ids, attr_mask = pad_emo(g_attr_ids, padding_value=0, use_mask=True)
             ret.update({kfg.G_ATTR_IDS: g_attr_ids, kfg.ATTR_MASK: attr_mask})
 
 
@@ -260,10 +260,6 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
             ret.update({ kfg.IDS: ids })
         if kfg.SAMPLE_PER_SAMPLE in batched_inputs[0]:
             ret.update({ kfg.SAMPLE_PER_SAMPLE: sample_per_sample})
-
-        if kfg.G_EMO_LABEL in batched_inputs[0]:
-            g_emo_label = [x[kfg.G_EMO_LABEL] for x in batched_inputs]
-            ret.update({kfg.G_EMO_LABEL: g_emo_label})
 
         return ret
 
