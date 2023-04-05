@@ -21,6 +21,7 @@ from ..encoder import build_encoder, add_encoder_config
 from ..decoder import build_decoder, add_decoder_config
 from ..predictor import build_predictor, add_predictor_config
 from ..decode_strategy import build_beam_searcher, build_greedy_decoder
+from ..CLIP import build_clipfilter, add_clip_config
 
 class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
     @configurable
@@ -35,7 +36,8 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
         decoder,
         predictor,
         greedy_decoder,
-        beam_searcher
+        beam_searcher,
+        clip_filter
     ):
         super(BaseEncoderDecoder, self).__init__()
         self.token_embed = token_embed
@@ -47,6 +49,7 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
         self.beam_searcher = beam_searcher
         self.vocab_size = vocab_size
         self.max_seq_len = max_seq_len
+        self.clip_filter = clip_filter
 
     @classmethod
     def from_config(cls, cfg):
@@ -59,7 +62,8 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
             "greedy_decoder": build_greedy_decoder(cfg),
             "beam_searcher": build_beam_searcher(cfg),
             "vocab_size": cfg.MODEL.VOCAB_SIZE,
-            "max_seq_len": cfg.MODEL.MAX_SEQ_LEN
+            "max_seq_len": cfg.MODEL.MAX_SEQ_LEN,
+            "clip_filter": build_clipfilter(cfg)
         }
 
     @classmethod

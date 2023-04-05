@@ -42,6 +42,7 @@ MODEL:
   USE_EMA: False
   EMA_DECAY: 0.9999
 
+
 #################################### Token embedding ####################################
   TOKEN_EMBED:
     NAME: 'TokenBaseEmbedding'

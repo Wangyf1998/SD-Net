@@ -41,6 +41,7 @@ MODEL:
   MAX_SEQ_LEN: 20
   USE_EMA: False
   EMA_DECAY: 0.9999
+  CLIP: 'PromptClipFilter'
 
 #################################### Token embedding ####################################
   TOKEN_EMBED:

@@ -24,10 +24,7 @@ class ClipFilter(nn.model, metaclass=ABCMeta):
     def preprocess(self, batched_inputs):
         return batched_inputs
 
-    def init_states(self, batch_size):
-        return {
 
-        }
 
 
 

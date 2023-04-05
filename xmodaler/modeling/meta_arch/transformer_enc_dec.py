@@ -27,6 +27,7 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
         max_seq_len,
         token_embed,
         visual_embed,
+        clip_filter,
         encoder,
         decoder,
         predictor,
@@ -43,7 +44,8 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
             decoder=decoder,
             predictor=predictor,
             greedy_decoder=greedy_decoder,
-            beam_searcher=beam_searcher
+            beam_searcher=beam_searcher,
+            clip_filter = clip_filter
         )
         self.v_predictor = v_predictor
 
@@ -76,16 +78,16 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
         ext_g_tmasks = ext_g_tmasks.unsqueeze(1)
         ext_g_tmasks = (1.0 - ext_g_tmasks) * -10000.0
 
-        ext_e_masks = torch.tril(torch.ones(
-            (seq_length, 5), dtype=tmasks.dtype, device=tmasks.device))
-        # TODO:这里5是暂定的concept数量，后续要写到配置文件里去
-        emasks = torch.ones(tmasks.size(0), 5).to(tmasks)
-        ext_e_masks = ext_e_masks.unsqueeze(0).expand(
-            (tmasks.size(0), seq_length, 5))
-        ext_e_masks = ext_e_masks * emasks.unsqueeze(1)
-        ext_e_masks = ext_e_masks.to(dtype=next(self.parameters()).dtype)
-        ext_e_masks = ext_e_masks.unsqueeze(1)
-        ext_e_masks = (1.0 - ext_e_masks) * -10000.0
+        # ext_e_masks = torch.tril(torch.ones(
+        #     (seq_length, 5), dtype=tmasks.dtype, device=tmasks.device))
+        # # TODO:这里5是暂定的concept数量，后续要写到配置文件里去
+        # emasks = torch.ones(tmasks.size(0), 5).to(tmasks)
+        # ext_e_masks = ext_e_masks.unsqueeze(0).expand(
+        #     (tmasks.size(0), seq_length, 5))
+        # ext_e_masks = ext_e_masks * emasks.unsqueeze(1)
+        # ext_e_masks = ext_e_masks.to(dtype=next(self.parameters()).dtype)
+        # ext_e_masks = ext_e_masks.unsqueeze(1)
+        # ext_e_masks = (1.0 - ext_e_masks) * -10000.0
 
 
 
@@ -111,6 +113,10 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
         ve_out = self.visual_embed(batched_inputs)
         inputs.update(ve_out)
 
+        if self.clip_filter is not None:
+            filter_out = self.clip_filter(inputs)
+            inputs.update(filter_out)
+
         if self.encoder is not None:
             encoder_out_v = self.encoder(inputs, mode='v')
             inputs.update(encoder_out_v)
@@ -118,7 +124,7 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
         if self.decoder is not None:
             inputs = self.decoder.preprocess(inputs)
 
-        te_out = self.token_embed(batched_inputs)
+        te_out = self.token_embed(batched_inputs, inputs)
         inputs.update(te_out)
         
         if self.encoder is not None:

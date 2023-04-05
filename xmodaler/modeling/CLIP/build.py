@@ -2,7 +2,7 @@ from xmodaler.utils.registry import Registry
 
 CLIP_REGISTRY = Registry("CLIP")
 CLIP_REGISTRY.__doc__ = """
-Registry for decoder
+Registry for clipfilter
 """
 
 def build_clipfilter(cfg):

@@ -29,7 +29,7 @@ stopwords.extend(new_words)
 
 
 def get_concept(imgs, counts, stopwords):
-    # 0:positive,1:negative,2:something else
+    # 0:positive,1:negative,2:something else，该函数用来生成单个句子下的concept dict
     concept = defaultdict(Counter)
     count_thr = 3
     for img in imgs['utterance_result']:
@@ -37,22 +37,31 @@ def get_concept(imgs, counts, stopwords):
         spell = img['utterance_spelled']
         graph = sng_parser.parse(spell)
         object = defaultdict(list)
-        positive_set = {1, 2, 3, 4}
-        negative_set = {5, 6, 7, 8}
-        for entity in graph['entities']:
-            word = entity['lemma_head']
-            if word not in stopwords:
-                if emotion_label in positive_set:
-                    object[0].append(word)
-                elif emotion_label in negative_set:
-                    object[1].append(word)
-                else:
-                    object[2].append(word)
+        positive_set = {0, 2, 3, 1}
+        negative_set = {4, 6, 7, 5}
+        for entity in graph['entities']:             # 得到场景图中的head，并将其写入对应的positive/negative字典中
+            word = entity['lemma_head'].split(' ')   # lemma head有可能是多个词组成的词组，将其split并分别送入list中
+            if isinstance(word, list):
+                for w in word:
+                    if w not in stopwords:
+                        if emotion_label in positive_set:
+                            object[0].append(w)
+                        elif emotion_label in negative_set:
+                            object[1].append(w)
+                        else:
+                            object[2].append(w)
+            else:
+                if word not in stopwords:
+                    if emotion_label in positive_set:
+                        object[0].append(word)
+                    elif emotion_label in negative_set:
+                        object[1].append(word)
+                    else:
+                        object[2].append(word)
         for k, v in object.items():
             concept[k].update(v)
-    for k, v in concept.items():
-        v = v.most_common()
-    concept_dict = {key: [word for word, count in counter.items()] for key, counter in concept.items()}
+    concept = {k: v.most_common() for k, v in concept.items()}
+    concept_dict = {key: [words[0] for words in list] for key, list in concept.items()}
     # 把counter类型的词典转化为普通词典
     for k, v in concept_dict.items():
         concept_dict[k] = [w if counts.get(w, 0) > count_thr else 'UNK' for w in concept_dict[k]]
@@ -102,9 +111,11 @@ def build_vocab(imgs, params, stopwords):
 
     # lets look at the distribution of lengths as well
     sent_lengths = {}
+    concept_pool = {'0': '', '1': '', '2': ''}                # 创建一个concept pool用来存储按照三元组分类的concept
     for img in imgs:
         concept = get_concept(img, counts, stopwords)
         img['concept'] = concept
+        concept_pool.update(concept)
         for sent in img['utterance_result']:
             txt = sent['tokens'].replace(" ","").strip('[]').split(',')
             nw = len(txt)
@@ -140,8 +151,7 @@ def build_vocab(imgs, params, stopwords):
             # emo_embedidng.append(emo_glove)
 
 
-    return vocab
-
+    return vocab, concept_pool
 
 def encode_captions(imgs, params, wtoi):
     """
@@ -182,9 +192,11 @@ def encode_captions(imgs, params, wtoi):
             # 不再固定为5，而是依照attr的长度确定
             output_Li = np.zeros((1, len(v)), dtype='int32')
             for num, word in enumerate(v):
-                output_Li[num] = wtoi[word]
+                output_Li[0, num] = wtoi[word]
             output_list[k] = output_Li
         return output_list
+
+    concept_pool_ids = {'0': '', '1': '', '2': ''}
 
     for img in imgs:
         split = img["split"]
@@ -196,6 +208,7 @@ def encode_captions(imgs, params, wtoi):
         emo_label = img['emo_label']
         concepts = img['concept']
         attr_gt = get_attr_ids(concepts)
+        concept_pool_ids.update(attr_gt)       # 从attr_gt中update得到由ids构成的concept_pool
         input_Li, output_Li, emotion_embedding = get_token_ids(img)
         # for index, s in enumerate(img['final_captions']):
         #     input_Li = np.zeros((1, max_length + 1), dtype='uint32')
@@ -223,7 +236,7 @@ def encode_captions(imgs, params, wtoi):
                 "attr_gt": attr_gt
             }
         datalist[split].append(new_data)
-    return datalist
+    return datalist, concept_pool_ids
 
 
 def save_pkl_file(datalist, output_dir):
@@ -289,7 +302,7 @@ def main(params):
     seed(123)  # make reproducible
 
     # create the vocab
-    vocab = build_vocab(imgs, params, stopwords)
+    vocab, concept_pool = build_vocab(imgs, params, stopwords)
     itow = {i + 1: w for i, w in enumerate(vocab)}  # a 1-indexed vocab translation table
     wtoi = {w: i + 1 for i, w in enumerate(vocab)}  # inverse table
 
@@ -299,18 +312,21 @@ def main(params):
             fout.write("{}\n".format(w))
 
     # encode captions in large arrays, ready to ship to hdf5 file
-    datalist = encode_captions(imgs, params, wtoi)
+    datalist, concept_pool_ids = encode_captions(imgs, params, wtoi)
 
     # create output file
     save_pkl_file(datalist, params['output_dir'])
     save_split_json_file(imgs, params['output_dir'])
+
+    json.dump(concept_pool, open(os.path.join(params['output_dir'], "concept_pool.json"), "w"))
+    pkl.dump(concept_pool_ids, open(os.path.join(params['output_dir'], "concept_pool_ids.pkl"), "wb"))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # input json
-    parser.add_argument('--input_json', default="/home/wyf/artemis_fullcombined.json", help='input json file to process into hdf5')
+    parser.add_argument('--input_json', default="/home/wyf/artemis_100.json", help='input json file to process into hdf5')
     parser.add_argument('--output_dir', default='.', help='output directory')
     parser.add_argument('--input_emotion', default = "/home/wyf/emotion_embedding/", help='get emotion embedding file')
 
