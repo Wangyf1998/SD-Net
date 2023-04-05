@@ -51,7 +51,7 @@ class COSNetDecoder(Decoder):
         vfeats = batched_inputs[kfg.ATT_FEATS]
         ext_vmasks = batched_inputs[kfg.EXT_ATT_MASKS]
         attr = batched_inputs[kfg.G_ATTR_EMBED]
-        attr_origin = batched_inputs[kfg.G_ATTR_EMBED]
+        # attr_origin = batched_inputs[kfg.G_ATTR_EMBED]
         # emo_word = batched_inputs[kfg.G_EMO_WORD_EMBED]
         # emo_word_origin = batched_inputs[kfg.G_EMO_WORD_EMBED]
         history_states = batched_inputs.get(kfg.HISTORY_STATES, None)
@@ -79,8 +79,8 @@ class COSNetDecoder(Decoder):
         for i, layer_module in enumerate(self.g_layers):
             if history_states[i] is not None:
                 history_states[i] = torch.cat([history_states[i], g_tfeats], dim=1)
-                while history_states[i].shape[0] > attr.shape[0]:
-                    attr = torch.cat([attr, attr_origin], dim=0)
+                # while history_states[i].shape[0] > attr.shape[0]:
+                #     attr = torch.cat([attr, attr_origin], dim=0)
             dropout_probability = random.uniform(0, 1)
             this_layer_drop = self.layer_drop * (i+1)/len(self.g_layers)
             if self.training and (dropout_probability < this_layer_drop):

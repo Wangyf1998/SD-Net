@@ -5,10 +5,7 @@ import clip
 import torch
 from torchvision.datasets import CIFAR100
 
-class Test(nn.module):
-    def __init__(self):
-        super(Test, self).__init__()
-        self.linear =
+
 # Load the model
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load('ViT-B/32', device)

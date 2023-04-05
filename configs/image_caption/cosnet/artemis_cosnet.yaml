@@ -8,7 +8,7 @@ DATASETS:
 
 ###################################### DATALOADER ######################################
 DATALOADER:
-  TRAIN_BATCH_SIZE: 8
+  TRAIN_BATCH_SIZE: 32
   TEST_BATCH_SIZE: 32
   NUM_WORKERS: 0
   FEATS_FOLDER: "/home/wyf/open_source_dataset/artemis_dataset/wikiart_CLIP_101_49/"
