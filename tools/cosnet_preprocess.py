@@ -7,6 +7,7 @@ import json
 import argparse
 from random import shuffle, seed
 import string
+import itertools
 # non-standard dependencies:
 # import h5py
 import numpy as np
@@ -22,8 +23,8 @@ from nltk.corpus import stopwords
 
 new_words = ['painting', 'painter', 'picture', 'look', 'day', 'colours', 'sense', 'color', 'colour', 'colours',
              'colour', 'background', 'I', 'colouring', 'artwork', 'beginning', 'end', 'ending', 'begin',
-             'atmosphere', 'image', 'activity', 'something', 'nothing', 'anything',
-             'size', 'scene', 'use', 'work']
+             'atmosphere', 'image', 'activity', 'something', 'nothing', 'anything','emotion','feeling',
+             'size', 'scene', 'use', 'work', 'lack', 'detail', 'detail', 'place']
 stopwords = stopwords.words('english')
 stopwords.extend(new_words)
 
@@ -38,7 +39,7 @@ def get_concept(imgs, counts, stopwords):
         graph = sng_parser.parse(spell)
         object = defaultdict(list)
         positive_set = {0, 2, 3, 1}
-        negative_set = {4, 6, 7, 5}
+        negative_set = {4, 6, 7, 5}                  # 0:positive; 1:negative; 2.something else
         for entity in graph['entities']:             # 得到场景图中的head，并将其写入对应的positive/negative字典中
             word = entity['lemma_head'].split(' ')   # lemma head有可能是多个词组成的词组，将其split并分别送入list中
             if isinstance(word, list):
@@ -111,15 +112,20 @@ def build_vocab(imgs, params, stopwords):
 
     # lets look at the distribution of lengths as well
     sent_lengths = {}
-    concept_pool = {'0': '', '1': '', '2': ''}                # 创建一个concept pool用来存储按照三元组分类的concept
+    concept_pool = defaultdict(list)                # 创建一个concept pool用来存储按照三元组分类的concept
     for img in imgs:
         concept = get_concept(img, counts, stopwords)
         img['concept'] = concept
-        concept_pool.update(concept)
+        for k in concept:
+            concept_pool[k].extend(concept[k])
+
+
         for sent in img['utterance_result']:
             txt = sent['tokens'].replace(" ","").strip('[]').split(',')
             nw = len(txt)
             sent_lengths[nw] = sent_lengths.get(nw, 0) + 1
+    for k in concept_pool:
+        concept_pool[k] = list(set(concept_pool[k]))
     max_len = max(sent_lengths.keys())
     print('max length sentence in raw data: ', max_len)
     print('sentence length distribution (count, number of words):')
@@ -196,7 +202,6 @@ def encode_captions(imgs, params, wtoi):
             output_list[k] = output_Li
         return output_list
 
-    concept_pool_ids = {'0': '', '1': '', '2': ''}
 
     for img in imgs:
         split = img["split"]
@@ -208,7 +213,6 @@ def encode_captions(imgs, params, wtoi):
         emo_label = img['emo_label']
         concepts = img['concept']
         attr_gt = get_attr_ids(concepts)
-        concept_pool_ids.update(attr_gt)       # 从attr_gt中update得到由ids构成的concept_pool
         input_Li, output_Li, emotion_embedding = get_token_ids(img)
         # for index, s in enumerate(img['final_captions']):
         #     input_Li = np.zeros((1, max_length + 1), dtype='uint32')
@@ -236,8 +240,21 @@ def encode_captions(imgs, params, wtoi):
                 "attr_gt": attr_gt
             }
         datalist[split].append(new_data)
-    return datalist, concept_pool_ids
-
+    return datalist
+def get_pool_ids(wtoi, concept_pool):
+    pos_len = len(concept_pool[0])
+    neg_len = len(concept_pool[1])
+    se_len = len(concept_pool[2])
+    print("positive length is:", pos_len)
+    print("negative length is:", neg_len)
+    print("something else length is:", se_len)
+    output_list = {}
+    for k, v in concept_pool.items():
+        output_Li = np.zeros((1, len(v)), dtype='int32')
+        for num, word in enumerate(v):
+            output_Li[0, num] = wtoi[word]
+        output_list[k] = output_Li
+    return output_list
 
 def save_pkl_file(datalist, output_dir):
     for split in datalist:
@@ -312,8 +329,8 @@ def main(params):
             fout.write("{}\n".format(w))
 
     # encode captions in large arrays, ready to ship to hdf5 file
-    datalist, concept_pool_ids = encode_captions(imgs, params, wtoi)
-
+    datalist = encode_captions(imgs, params, wtoi)
+    concept_pool_ids = get_pool_ids(wtoi, concept_pool)
     # create output file
     save_pkl_file(datalist, params['output_dir'])
     save_split_json_file(imgs, params['output_dir'])
@@ -326,8 +343,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # input json
-    parser.add_argument('--input_json', default="/home/wyf/artemis_100.json", help='input json file to process into hdf5')
-    parser.add_argument('--output_dir', default='.', help='output directory')
+    parser.add_argument('--input_json', default="/home/wyf/artemis_fullcombined.json", help='input json file to process into hdf5')
+    parser.add_argument('--output_dir', default="/home/wyf/open_source_dataset/artemis_dataset/4.10/", help='output directory')
     parser.add_argument('--input_emotion', default = "/home/wyf/emotion_embedding/", help='get emotion embedding file')
 
     # options

@@ -41,6 +41,10 @@ class COSNetEncoder(nn.Module):
         self.slot_size = slot_size
         self.max_pos_len = max_pos
 
+        self.query_pred = nn.Sequential(
+            nn.Dropout(0.1),
+            nn.Linear(hidden_size, 3)
+        )
         self.semantics_pred = nn.Sequential(
             nn.Dropout(0.1),
             nn.Linear(hidden_size, num_classes+1)   
@@ -102,23 +106,19 @@ class COSNetEncoder(nn.Module):
 
     def forward(self, batched_inputs, mode=None):
         ret = {}
-        # batch_size = batched_inputs[kfg.ATT_FEATS].size(0)
-        # if batched_inputs['EMO_TOKEN'] is None:
-        #     emotion_token = torch.zeros(11, 512)
-            # 11 = 9+2，0—8是9种情感分类，9-10是pos/neg
+
         if mode == None or mode == 'v':
             vfeats = batched_inputs[kfg.ATT_FEATS]
+            batch_size = vfeats.shape(0)
             ext_vmasks = batched_inputs[kfg.EXT_ATT_MASKS]
             ext_vmasks = torch.cat([ext_vmasks[:, :, :, 0:1], ext_vmasks], dim=-1)
             ret.update({kfg.EXT_ATT_MASKS: ext_vmasks})
-
+            # memory_dict = {}
+            # if batched_inputs['ENCODER_TOKEN'] is None:
+            #     emotion_token = torch.zeros(9, 512)
+                #0-3:positive，4-7：negative
             # emo_label = batched_inputs['G_EMO_LABEL']
             # emo_list = list(chain(*emo_label))
-            # # 把emo_lable转化为一个扁平的list
-            # for i in range(batch_size):
-            #     label = emo_list(i)
-            #     vfeats.
-
             gfeats = []
             gfeats.append(vfeats[:, 0])
             encoder_vfeats = vfeats
@@ -138,11 +138,32 @@ class COSNetEncoder(nn.Module):
             attr_mask = attr_mask.unsqueeze(1).unsqueeze(2)
             ret.update({kfg.EXT_ATTR_MASK: attr_mask})
 
+            query = batched_inputs.get(kfg.QUERY_EMBED, None)
+            if query is None:
+                query = nn.Parameter(torch.FloatTensor(1, query_size, hidden_size))
+                nn.init.xavier_uniform_(query)
+                query_embed = self.slot_embeddings(query)
+                query_embed = query_embed.expand(batch_size, query_embed.shape[1], query_embed.shape[2])
+            else:
+                query_embed = query
+            # query_mask = torch.ones((query_embed.shape[0], query_embed.shape[1]), device=query_embed.device).to(dtype=next(self.parameters()).dtype)
+            query_mask = None
+            for layer_module in self.decoder_enc_layers:
+                query_embed = layer_module(semantics_embed, encoder_vfeats, query_mask, ext_vmasks)
+            query_output = self.query_pred(query_embed)
+
+            ret.update({
+                kfg.QUERY_EMBED:query_embed,
+                kfg.QUERY_OUTPUT: query_output
+            })
+
+
 
 
             # semantics_embed = self.embeddings(semantics_ids)
             # slot_embed = self.slot_embeddings(self.slot)
             # slot_embed = slot_embed.expand(semantics_embed.shape[0], slot_embed.shape[1], slot_embed.shape[2])
+            # 将slot_embed扩展至于semantic_embed相同的维度
             # semantics_embed = torch.cat([slot_embed, semantics_embed], dim=1)
             #
             # slot_mask = torch.ones((semantics_embed.shape[0], slot_embed.shape[1]), device=slot_embed.device).to(dtype=next(self.parameters()).dtype)
@@ -155,13 +176,13 @@ class COSNetEncoder(nn.Module):
             #     semantics_embed = layer_module(semantics_embed, encoder_vfeats, semantics_mask, ext_vmasks)
             #
             # semantics_pred = self.semantics_pred(semantics_embed)
-
+            #
             # ret.update({
             #     kfg.SEMANTICS_PRED: semantics_pred,
             #     kfg.SEMANTICS_FEATS: semantics_embed,
             #     kfg.EXT_SEMANTICS_MASKS: semantics_mask,
             # })
-
+            #
             # semantics_pos_pred = semantics_embed @ self.position.t()
             # semantics_pos_prob = self.softmax(semantics_pos_pred)
             # position = semantics_pos_prob @ self.position

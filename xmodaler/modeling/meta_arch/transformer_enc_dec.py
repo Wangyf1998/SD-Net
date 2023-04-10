@@ -102,7 +102,7 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
             kfg.EXT_G_TOKENS_MASKS: ext_g_tmasks,
             kfg.ATT_MASKS: vmasks,
             kfg.EXT_ATT_MASKS: ext_vmasks,
-            kfg.EXT_EMO_MASKS: ext_e_masks
+
         }
 
     def _forward(self, batched_inputs):
@@ -113,13 +113,13 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
         ve_out = self.visual_embed(batched_inputs)
         inputs.update(ve_out)
 
-        if self.clip_filter is not None:
-            filter_out = self.clip_filter(inputs)
-            inputs.update(filter_out)
-
         if self.encoder is not None:
             encoder_out_v = self.encoder(inputs, mode='v')
             inputs.update(encoder_out_v)
+
+        if self.clip_filter is not None:
+            filter_out = self.clip_filter(inputs)
+            inputs.update(filter_out)
 
         if self.decoder is not None:
             inputs = self.decoder.preprocess(inputs)

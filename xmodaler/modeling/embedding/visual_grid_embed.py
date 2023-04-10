@@ -30,13 +30,14 @@ class VisualGridEmbedding(nn.Module):
         super(VisualGridEmbedding, self).__init__()
         self.embeddings = nn.Linear(in_dim, out_dim)
         self.g_embeddings = nn.Linear(g_in_dim, out_dim) if g_in_dim > 0 else None
-        self.e_embeddings = nn.Linear(200, out_dim)
+        # self.e_embeddings = nn.Linear(200, out_dim)
         self.emotion_embeddings = nn.Linear(g_in_dim, out_dim)
+        # self.t_embeddings = nn.Linear(g_in_dim, out_dim)            # 用来编码encoder_token的层
         self.embeddings_act = kwargs.pop("embeddings_act", None)
         self.embeddings_norm = kwargs.pop("embeddings_norm", None)
         self.embeddings_dropout = kwargs.pop("embeddings_dropout", None)
         self.embeddings_pos = kwargs.pop('embeddings_pos', None)
-        self.e_g_embeddings = nn.Linear(1024, out_dim)
+        # self.e_g_embeddings = nn.Linear(1024, out_dim)
 
     @classmethod
     def from_config(cls, cfg):
@@ -74,17 +75,23 @@ class VisualGridEmbedding(nn.Module):
 
     def forward(self, batched_inputs):
         feats = batched_inputs[kfg.ATT_FEATS]
+        batch_size = feats.size(0)
         embeddings = self.embeddings(feats)
         emotion_ids = batched_inputs[kfg.G_EMOTION_IDS]
+        encoder_token = batched_inputs.get(kfg.ENCODER_TOKEN, None)
+        # if encoder_token is None:
+        #     encoder_token = torch.zeros([batch_size, 1, 512], dtype=torch.float).to("cuda")
+        # else:
+        #     encoder_token = batched_inputs[kfg.ENCODER_TOKEN]
 
         if self.g_embeddings is not None:
             gfeats = batched_inputs[kfg.GLOBAL_FEATS].view(embeddings.shape[0], -1, embeddings.shape[-1])
             g_embeddings = self.g_embeddings(gfeats)
-            #emofeats = self.e_embeddings(emotion_ids).view(embeddings.shape[0], -1, embeddings.shape[-1])
-            #e_g_feats = torch.cat([g_embeddings, emofeats], dim=2)
-            #e_g_embeddings = self.e_g_embeddings(e_g_feats)
-            #embeddings = torch.cat([e_g_embeddings, embeddings], dim=1)
             embeddings = torch.cat([g_embeddings, embeddings], dim=1)
+
+        # if self.t_embeddings is not None:
+        #     token_embeddings = self.t_embeddings(encoder_token)
+        #     embeddings = torch.cat([embeddings, token_embeddings], dim=1)
 
         embeddings_pos = self.embeddings_pos
         embeddings = embeddings + embeddings_pos
@@ -100,6 +107,7 @@ class VisualGridEmbedding(nn.Module):
 
 
 
-        #直接将emo连接在图像embedding上
 
-        return { kfg.ATT_FEATS: embeddings }
+
+        return { kfg.ATT_FEATS: embeddings,
+                 }

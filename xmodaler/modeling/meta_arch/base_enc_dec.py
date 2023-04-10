@@ -264,7 +264,9 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
             ret.update({ kfg.IDS: ids })
         if kfg.SAMPLE_PER_SAMPLE in batched_inputs[0]:
             ret.update({ kfg.SAMPLE_PER_SAMPLE: sample_per_sample})
-
+        if kfg.G_EMO_LABEL in batched_inputs[0]:
+            g_emo_label = [x[kfg.G_EMO_LABEL] for x in batched_inputs]
+            ret.update({kfg.G_EMO_LABEL: g_emo_label})
         return ret
 
 

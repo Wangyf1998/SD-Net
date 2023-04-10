@@ -60,7 +60,7 @@ def build_xmodaler_train_loader(datalist, *, dataset_mapper, batch_size, num_wor
         return None
 
     if isinstance(datalist, list):
-        dataset = DatastFromList(datalist, copy=False)
+        dataset = DatasetFromList(datalist, copy=False)
     if dataset_mapper is not None:
         dataset = MapDataset(dataset, dataset_mapper)
     

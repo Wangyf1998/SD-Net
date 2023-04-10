@@ -6,8 +6,8 @@ Registry for clipfilter
 """
 
 def build_clipfilter(cfg):
-    clipfilter = CLIP_REGISTRY.get(cfg.MODEL.CLIP)(cfg) if len(cfg.MODEL.CLIP) > 0 else None
-    return clipfilter
+    clip_filter = CLIP_REGISTRY.get(cfg.MODEL.CLIP)(cfg) if len(cfg.MODEL.CLIP) > 0 else None
+    return clip_filter
 
 def add_clip_config(cfg, tmp_cfg):
     if len(tmp_cfg.MODEL.CLIP) > 0:
