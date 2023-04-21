@@ -15,5 +15,6 @@ from .single_stream_bert_encoder import SingleStreamBertEncoder
 from .lowrank_bilinear_encoder import LowRankBilinearEncoder
 from .tdconved_encoder import TDConvEDEncoder
 from .cosnet_encoder import COSNetEncoder
+from .artemis_encoder import ArtemisEncoder
 
 __all__ = list(globals().keys())

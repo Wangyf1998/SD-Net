@@ -69,39 +69,8 @@ class MSCoCoDataset:
         def _load_pkl_file(filepath):
             return pickle.load(open(filepath, 'rb'), encoding='bytes') if len(filepath) > 0 else None
 
-        # def _load_json_file(filepath):
-        #     return json.load(open(filepath))
-
-        # def _process_senti_file(datalist, detector, objects):
-        #     for i in range(len(datalist)):
-        #         image_senti = [tuple(sub) for sub in datalist[i]['img_senti']]
-        #         image_senti = set(image_senti)
-        #         emotion_label = datalist[i]['emo_label']
-        #         ext_words = image_senti & set(objects)
-        #         if ext_words:
-        #             for ext_word in ext_words:
-        #                 if emotion_label in {0,1,2,3}:
-        #                     datalist[i]['emo_word'] = detector['positive'].get(ext_word, None)
-        #                 elif emotion_label in {4,5,6,7}:
-        #                     datalist[i]['emo_word'] = detector['negative'].get(ext_word, None)
-        #         else:
-        #             datalist[i]['emo_word'] = []
-        #             datalist[i]['emo_word'].append(np.array([1, 2, 0, 0, 0]))
-        #             if i == 12:
-        #                 datalist[i]['emo_word'].append(np.array([1, 2, 0, 0, 0]))
-        #
-        #         # if datalist[i]['emo_word'] is not None and len(datalist[i]['emo_word']) > 5:
-        #         #     datalist[i]['emo_word'] = datalist[i]['emo_word'][:5]
-        #         # else:
-        #         #     while len(datalist[i]['emo_word']) < 5:
-        #         #         datalist[i]['emo_word'] = np.concatenate((datalist[i]['emo_word'], [0]))
-        #     return datalist
-
         datalist = pickle.load(open(self.anno_file, 'rb'), encoding='bytes')
-        datalist = datalist[:100]
         datalist = self._preprocess_datalist(datalist)
-
-        # sentiment_word = _load_json_file("/home/wyf/open_source_dataset/for_debug/new_3.18/for_debug_sentiment_words.json")
 
         ext_data = {
             "relation": _load_pkl_file(self.relation_file),

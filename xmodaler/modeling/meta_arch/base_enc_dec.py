@@ -267,6 +267,12 @@ class BaseEncoderDecoder(nn.Module, metaclass=ABCMeta):
         if kfg.G_EMO_LABEL in batched_inputs[0]:
             g_emo_label = [x[kfg.G_EMO_LABEL] for x in batched_inputs]
             ret.update({kfg.G_EMO_LABEL: g_emo_label})
+        if kfg.ART_STYLE in batched_inputs[0]:
+            art_style = [x[kfg.ART_STYLE] for x in batched_inputs]
+            if kfg.SEQ_PER_SAMPLE in batched_inputs[0]:
+                art_style = np.repeat(np.expand_dims(art_style, axis=1), repeat_num, axis=1).flatten()
+            ret.update({kfg.ART_STYLE: art_style})
+
         return ret
 
 

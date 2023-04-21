@@ -109,6 +109,20 @@ class MSCoCoCOSNetDataset(MSCoCoDataset):
     def __call__(self, dataset_dict):
         dataset_dict = copy.deepcopy(dataset_dict)
         image_id = dataset_dict['image_id']
+
+        def get_pool(datasetdict):
+            art_style = datasetdict['art_style']
+            if art_style in {'Realism', 'Impressionism'}:
+                art = '0'
+            elif art_style in {'Romanticism', 'Baroque', 'Color_Field_Painting', 'Art_Nouveau_Modern'}:
+                art = '1'
+            elif art_style in {'Post_Impressionism', 'Northern_Renaissance', 'High_Renaissance', 'Fauvism'}:
+                art = '2'
+            else:
+                art = '3'
+            return art
+        art_style = get_pool(dataset_dict)
+
         if len(self.feats_folder) > 0:
             feat_path = os.path.join(self.feats_folder, image_id + '.npz')
             content = read_np(feat_path)
@@ -118,12 +132,14 @@ class MSCoCoCOSNetDataset(MSCoCoDataset):
             ret = { 
                 kfg.IDS: image_id, 
                 kfg.ATT_FEATS: att_feats,
-                kfg.GLOBAL_FEATS: global_feat
+                kfg.GLOBAL_FEATS: global_feat,
+                kfg.ART_STYLE: art_style
             }
 
         else:
             # dummy ATT_FEATS
             ret = { kfg.IDS: image_id, kfg.ATT_FEATS: np.zeros((1,1)) }
+
 
         # semantics_ids = dataset_dict['attr_pred']
         # semantics_labels = dataset_dict['attr_labels']
@@ -146,10 +162,19 @@ class MSCoCoCOSNetDataset(MSCoCoDataset):
         
         sent_num = len(dataset_dict['tokens_ids'])
         if sent_num >= self.seq_per_img:
-            selects = random.sample(range(sent_num), self.seq_per_img)
+            selects = []
+            while len(selects) <= self.seq_per_img:
+                i = random.randint(0, sent_num - 1)
+                if dataset_dict['emo_label'][i] != 8 and i not in selects:
+                    selects.append(i)
+
         else:
-            selects = random.choices(range(sent_num), k = (self.seq_per_img - sent_num))
-            selects += list(range(sent_num))
+            selects = []
+            while len(selects) < self.seq_per_img:
+                i = random.randint(0, sent_num - 1)
+                if dataset_dict['emo_label'][i] != 8 and i not in selects:
+                    selects.append(i)
+            selects += random.sample(list(range(sent_num)), self.seq_per_img - sent_num)
 
         # semantics_ids = [ semantics_ids.astype(np.int64) for i in selects ]
         # semantics_labels = [ semantics_labels.astype(np.int64) for i in selects ]
@@ -173,16 +198,22 @@ class MSCoCoCOSNetDataset(MSCoCoDataset):
         tokens_ids = get_token(dataset_dict, selects)
 
         def get_emo(datasetdict, select):
-            g_emotion_ids = []
             g_emo_label = []
             for i in select:
-                emo = datasetdict['emotion_embedding'][i].astype(np.float32)
                 label = datasetdict['emo_label'][i]
-                g_emotion_ids.append(emo)
                 g_emo_label.append(label)
-            return g_emotion_ids, g_emo_label
-        g_emotion_ids, g_emo_label = get_emo(dataset_dict, selects)
+            return g_emo_label
+        g_emo_label = get_emo(dataset_dict, selects)
         # g_emotion_ids = [dataset_dict['emotion_embedding'][i,:].astype("float32") for i in selects]
+
+        # def get_style(datasetdict, select):
+        # # 获取art_style
+        #     art_style = []
+        #     for i in select:
+        #         style = datasetdict['art_style']
+        #         art_style.append(style)
+        #     return art_style
+        # art_style = get_style(dataset_dict, selects)
 
         def get_target(datasetdict, select):
             target_ids = []
@@ -201,26 +232,37 @@ class MSCoCoCOSNetDataset(MSCoCoDataset):
             return g_tokens_type
         g_tokens_type = get_token_type(dataset_dict, selects)
 
-        def get_emoword(datasetdict, select):
-            # 根据select里的选项选择attribute label
+        def get_concept(datasetdict, select):
+            # 得到作为label的concepts_ids
             attr_gt = []
             supp = np.array([[0,0,0,0,0]])
             for i in select:
                 emo_label = dataset_dict['emo_label'][i]
-                if emo_label in [1,2,3,4]:
-                    word = datasetdict['attr_gt'].get(0, supp)
+                if emo_label in [0,1,2,3]:
+                    word = datasetdict['concept_ids'].get(0, supp)
                     word = np.squeeze(word)
                     attr_gt.append(word)
-                elif emo_label in [5,6,7,8]:
-                    word = datasetdict['attr_gt'].get(1, supp)
+                elif emo_label in [4,5,6,7]:
+                    word = datasetdict['concept_ids'].get(1, supp)
                     word = np.squeeze(word)
                     attr_gt.append(word)
-                elif emo_label == 0:
-                    word = datasetdict['attr_gt'].get(2, supp)
+                else:
+                    word = datasetdict['concept_ids'].get(2, supp)
                     word = np.squeeze(word)
                     attr_gt.append(word)
             return attr_gt
-        attr_gt = get_emoword(dataset_dict, selects)
+        concepts_ids = get_concept(dataset_dict, selects)
+
+        def get_emoword(datasetdict, select):
+            attr_gt = []
+            supp = np.array([[0,0,0,0,0]])
+            for i in select:
+                emo_label = dataset_dict['emo_label'][i]
+                word = datasetdict['emoword_ids'].get(emo_label, supp)
+                word = np.squeeze(word)
+                attr_gt.append(word)
+            return attr_gt
+        emoword_ids = get_emoword(dataset_dict, selects)
 
 
 
@@ -234,14 +276,17 @@ class MSCoCoCOSNetDataset(MSCoCoDataset):
             kfg.G_TOKENS_IDS: tokens_ids,
             kfg.G_TARGET_IDS: target_ids,
             kfg.G_TOKENS_TYPE: g_tokens_type,
-            kfg.G_EMOTION_IDS: g_emotion_ids,
-            kfg.G_ATTR_IDS: attr_gt,
-            # kfg.G_EMO_TYPE: g_emo_type
+            kfg.G_ATTR_IDS: concepts_ids,
+            # kfg.G_CONCEPTS_IDS: concepts_ids,
+            # kfg.G_EMO_WORD_IDS: emoword_ids
+
         })
         dict_as_tensor(ret)
 
         ret.update({
-            kfg.G_EMO_LABEL: g_emo_label
+            kfg.G_EMO_LABEL: g_emo_label,
+            kfg.ART_STYLE: art_style,
+
         }
         )
         return ret

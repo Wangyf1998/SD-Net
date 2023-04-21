@@ -100,18 +100,20 @@ class TokenBaseEmbedding(nn.Module):
             ret.update({
                 kfg.G_EMO_WORD_EMBED: g_emo_word_embed
             })
-        if kfg.G_ATTR_EMBED not in batched_inputs:
-            g_attr_ids = torch.squeeze(batched_inputs[kfg.G_ATTR_IDS])
-            g_attr_embed = self.embeddings(g_attr_ids)
+        # if kfg.G_ATTR_EMBED not in batched_inputs:
+        #     g_attr_ids = torch.squeeze(batched_inputs[kfg.G_ATTR_IDS])
+        #     g_attr_embed = self.embeddings(g_attr_ids)
+        if kfg.PRED_EMBED not in batched_inputs:
+            pred = batched_inputs[kfg.CONCEPTS_PRED]
+            pred_embed = self.embeddings(pred)
         # semantics_pos_pred = g_attr_embed @ self.position.t()
         # semantics_pos_prob = self.softmax(semantics_pos_pred)
         # position = semantics_pos_prob @ self.position
         # g_attr_embed = g_attr_embed + position
             ret.update({
-                kfg.G_ATTR_EMBED: g_attr_embed
-            }
-
-            )
+                kfg.PRED_EMBED: pred_embed,
+                }
+                )
 
         return ret
 

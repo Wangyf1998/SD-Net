@@ -77,20 +77,6 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
         ext_g_tmasks = ext_g_tmasks.to(dtype=next(self.parameters()).dtype)
         ext_g_tmasks = ext_g_tmasks.unsqueeze(1)
         ext_g_tmasks = (1.0 - ext_g_tmasks) * -10000.0
-
-        # ext_e_masks = torch.tril(torch.ones(
-        #     (seq_length, 5), dtype=tmasks.dtype, device=tmasks.device))
-        # # TODO:这里5是暂定的concept数量，后续要写到配置文件里去
-        # emasks = torch.ones(tmasks.size(0), 5).to(tmasks)
-        # ext_e_masks = ext_e_masks.unsqueeze(0).expand(
-        #     (tmasks.size(0), seq_length, 5))
-        # ext_e_masks = ext_e_masks * emasks.unsqueeze(1)
-        # ext_e_masks = ext_e_masks.to(dtype=next(self.parameters()).dtype)
-        # ext_e_masks = ext_e_masks.unsqueeze(1)
-        # ext_e_masks = (1.0 - ext_e_masks) * -10000.0
-
-
-
         vmasks = batched_inputs[kfg.ATT_MASKS]
         vmasks = vmasks.to(dtype=next(self.parameters()).dtype)
         vmasks = vmasks.unsqueeze(1).unsqueeze(2)
@@ -102,13 +88,27 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
             kfg.EXT_G_TOKENS_MASKS: ext_g_tmasks,
             kfg.ATT_MASKS: vmasks,
             kfg.EXT_ATT_MASKS: ext_vmasks,
-
         }
+
+    # def get_label(self, batched_inputs):
+    #     concepts = batched_inputs[kfg.CONCEPTS_IDS]
+    #     emowords = batched_inputs[kfg.EMO_WORD_IDS]
+    #     # concepts_pool是按照art_style划分的，而emowords_pool是按照不同的情感倾向划分的。
+    #     # 所以，应当有等同于art_style数量的concept_lable, 以及等同于情感类别数量的emoword_label
+    #
+    #     for i in range(9):
+    #         emowords_pool = batched_inputs[i]
+    #         emoword_label = torch.zeros(1, len(emowords_pool))
+    #     # 仿照wtoi的写法生成一个独热的label
 
     def _forward(self, batched_inputs):
         inputs = batched_inputs
         masks = self.get_extended_attention_mask(batched_inputs)
         inputs.update(masks)
+
+        if self.clip_filter is not None:
+            filter_out = self.clip_filter(inputs)
+            inputs.update(filter_out)
 
         ve_out = self.visual_embed(batched_inputs)
         inputs.update(ve_out)
@@ -117,9 +117,7 @@ class TransformerEncoderDecoder(BaseEncoderDecoder):
             encoder_out_v = self.encoder(inputs, mode='v')
             inputs.update(encoder_out_v)
 
-        if self.clip_filter is not None:
-            filter_out = self.clip_filter(inputs)
-            inputs.update(filter_out)
+
 
         if self.decoder is not None:
             inputs = self.decoder.preprocess(inputs)

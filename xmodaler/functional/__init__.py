@@ -35,5 +35,5 @@ from .func_pretrain import (
 )
 
 from .func_others import (
-    flat_list_of_lists
+    flat_list_of_lists,
 )

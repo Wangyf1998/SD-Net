@@ -12,3 +12,4 @@ from .reward_criterion import RewardCriterion
 from .bce_logits import BCEWithLogits
 from .triplet import BatchTriplet, Triplet
 from .semcomphder_loss import SemComphderLoss
+from .clipfilter_loss import ClipFilterLoss

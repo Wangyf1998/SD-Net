@@ -12,6 +12,7 @@ import string
 import numpy as np
 import torch
 import torchvision.models as models
+import spacy
 # import skimage.io
 # from PIL import Image
 import pickle as pkl
@@ -218,32 +219,33 @@ def main(params):
     vocab = build_vocab(imgs, params)
     itow = {i + 1: w for i, w in enumerate(vocab)}  # a 1-indexed vocab translation table
     wtoi = {w: i + 1 for i, w in enumerate(vocab)}  # inverse table
+    json.dump(wtoi, open(os.path.join(output_dir, "wtoi.json"), "w"))
 
-    print(len(vocab))
-    with open(os.path.join(params["output_dir"], "artemis_vocabulary.txt"), "w") as fout:
-        for w in vocab:
-            fout.write("{}\n".format(w))
+    # print(len(vocab))
+    # with open(os.path.join(params["output_dir"], "artemis_vocabulary.txt"), "w") as fout:
+    #     for w in vocab:
+    #         fout.write("{}\n".format(w))
 
     # encode captions in large arrays, ready to ship to hdf5 file
-    datalist = encode_captions(imgs, params, wtoi)
-
-    # create output file
-    save_pkl_file(datalist, params['output_dir'])
-    save_split_json_file(imgs, params['output_dir'])
+    # datalist = encode_captions(imgs, params, wtoi)
+    #
+    # # create output file
+    # save_pkl_file(datalist, params['output_dir'])
+    # save_split_json_file(imgs, params['output_dir'])
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # input json
-    parser.add_argument('--input_json', default="/home/wyf/open_source_dataset/for_debug/artemis_new_20.json", help='input json file to process into hdf5')
-    parser.add_argument('--output_dir', default='.', help='output directory')
+    parser.add_argument('--input_json', default="/home/wyf/artemis_fullcombined.json", help='input json file to process into hdf5')
+    parser.add_argument('--output_dir', default="/home/wyf/open_source_dataset/artemis_dataset/4.15/", help='output directory')
     parser.add_argument('--input_emotion', help='get emotion embedding file')
 
     # options
-    parser.add_argument('--max_length', default=30, type=int,
+    parser.add_argument('--max_length', default=16, type=int,
                         help='max length of a caption, in number of words. captions longer than this get clipped.')
-    parser.add_argument('--word_count_threshold', default=3, type=int,
+    parser.add_argument('--word_count_threshold', default=5, type=int,
                         help='only words that occur more than this number of times will be put in vocab')
 
     args = parser.parse_args()

@@ -10,9 +10,9 @@ DATASETS:
 DATALOADER:
   TRAIN_BATCH_SIZE: 4
   TEST_BATCH_SIZE: 4
-  NUM_WORKERS: 1
+  NUM_WORKERS: 6
   FEATS_FOLDER: "/home/wyf/open_source_dataset/artemis_dataset/wikiart_CLIP_101_49/"
-  ANNO_FOLDER:  "/home/wyf/open_source_dataset/for_debug/4.5/"
+  ANNO_FOLDER:  "/home/wyf/open_source_dataset/for_debug/4.20/"
   SEQ_PER_SAMPLE:  5
   MAX_FEAT_NUM: 50
   SAMPLE_PROB: 0.2
@@ -30,7 +30,7 @@ SCHEDULED_SAMPLING:
 
 ######################################### MODEL #########################################
 MODEL:
-  VOCAB_SIZE: 187 # include <BOS>/<EOS>
+  VOCAB_SIZE: 515 # include <BOS>/<EOS>
   META_ARCHITECTURE: 'TransformerEncoderDecoder'
   ENCODER: 'COSNetEncoder'
   ENCODER_DIM: 512
@@ -38,7 +38,7 @@ MODEL:
   DECODER_DIM: 512
   PREDICTOR: 'BasePredictor'
   PRED_DROPOUT: 0.5
-  MAX_SEQ_LEN: 20
+  MAX_SEQ_LEN: 17
   USE_EMA: False
   EMA_DECAY: 0.9999
   CLIP: 'PromptClipFilter'

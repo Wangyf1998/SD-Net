@@ -12,7 +12,7 @@ DATALOADER:
   TEST_BATCH_SIZE: 32
   NUM_WORKERS: 0
   FEATS_FOLDER: "/home/wyf/open_source_dataset/artemis_dataset/wikiart_CLIP_101_49/"
-  ANNO_FOLDER:  "/home/wyf/open_source_dataset/artemis_dataset/4.8/"
+  ANNO_FOLDER:  "/home/wyf/open_source_dataset/for_debug/4.20/"
   SEQ_PER_SAMPLE:  1
   MAX_FEAT_NUM: 50
   SAMPLE_PROB: 0.2

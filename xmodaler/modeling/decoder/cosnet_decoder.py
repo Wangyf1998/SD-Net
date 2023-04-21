@@ -50,13 +50,14 @@ class COSNetDecoder(Decoder):
         ret = {}
         vfeats = batched_inputs[kfg.ATT_FEATS]
         ext_vmasks = batched_inputs[kfg.EXT_ATT_MASKS]
-        attr = batched_inputs[kfg.G_ATTR_EMBED]
+        # attr = batched_inputs[kfg.G_ATTR_EMBED]
+        attr = batched_inputs[kfg.PRED_EMBED]
         # attr_origin = batched_inputs[kfg.G_ATTR_EMBED]
         # emo_word = batched_inputs[kfg.G_EMO_WORD_EMBED]
         # emo_word_origin = batched_inputs[kfg.G_EMO_WORD_EMBED]
         history_states = batched_inputs.get(kfg.HISTORY_STATES, None)
-        ext_e_masks = batched_inputs[kfg.EXT_EMO_MASKS]
-        ext_attr_masks = batched_inputs[kfg.EXT_ATTR_MASK]
+        # ext_attr_masks = batched_inputs[kfg.EXT_ATTR_MASK]
+        ext_attr_masks = None
 
         g_tfeats_arr = []
         g_tfeats = batched_inputs[kfg.G_TOKEN_EMBED]

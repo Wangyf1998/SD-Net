@@ -14,51 +14,49 @@ import numpy as np
 import torch
 import torchvision.models as models
 # import skimage.io
-# from PIL import Image
 import pickle as pkl
 import nltk
+from nltk.corpus import stopwords
 from collections import Counter, defaultdict
 import sng_parser
-from nltk.corpus import stopwords
+import spacy
+
 
 new_words = ['painting', 'painter', 'picture', 'look', 'day', 'colours', 'sense', 'color', 'colour', 'colours',
              'colour', 'background', 'I', 'colouring', 'artwork', 'beginning', 'end', 'ending', 'begin',
-             'atmosphere', 'image', 'activity', 'something', 'nothing', 'anything','emotion','feeling',
-             'size', 'scene', 'use', 'work', 'lack', 'detail', 'detail', 'place']
+             'atmosphere', 'image', 'activity', 'something', 'nothing', 'anything', 'emotion', 'feeling',
+             'size', 'scene', 'use', 'work', 'lack', 'detail', 'place', 'landscape', 'environment', 'posture',
+             'distance', 'one', 'situation', 'right']
 stopwords = stopwords.words('english')
 stopwords.extend(new_words)
 
 
 def get_concept(imgs, counts, stopwords):
-    # 0:positive,1:negative,2:something else，该函数用来生成单个句子下的concept dict
+    """
+    0:positive,1:negative,2:something else
+    该函数从每一个image下对应的多个caption中提取head中的名词，并选取positive以及negative倾向中出现频次最高的前五个作为该image的物体label
+    """
     concept = defaultdict(Counter)
-    count_thr = 3
+    count_thr = 5
     for img in imgs['utterance_result']:
         emotion_label = img['emotion_label']
         spell = img['utterance_spelled']
         graph = sng_parser.parse(spell)
         object = defaultdict(list)
-        positive_set = {0, 2, 3, 1}
-        negative_set = {4, 6, 7, 5}                  # 0:positive; 1:negative; 2.something else
+        positive_set = {0, 1, 2, 3}
+        negative_set = {4, 5, 6, 7}
         for entity in graph['entities']:             # 得到场景图中的head，并将其写入对应的positive/negative字典中
             word = entity['lemma_head'].split(' ')   # lemma head有可能是多个词组成的词组，将其split并分别送入list中
-            if isinstance(word, list):
-                for w in word:
-                    if w not in stopwords:
-                        if emotion_label in positive_set:
-                            object[0].append(w)
-                        elif emotion_label in negative_set:
-                            object[1].append(w)
-                        else:
-                            object[2].append(w)
-            else:
-                if word not in stopwords:
+            for w in word:
+                token = nltk.word_tokenize(w)
+                tags = nltk.pos_tag(token)
+                if (w not in stopwords) and (tags[0][1] == 'NN'):   # 保证单词不在stopwords中且单词的词性为名词
                     if emotion_label in positive_set:
-                        object[0].append(word)
+                        object[0].append(w)
                     elif emotion_label in negative_set:
-                        object[1].append(word)
+                        object[1].append(w)
                     else:
-                        object[2].append(word)
+                        object[2].append(w)
         for k, v in object.items():
             concept[k].update(v)
     concept = {k: v.most_common() for k, v in concept.items()}
@@ -71,18 +69,37 @@ def get_concept(imgs, counts, stopwords):
     # 移除concept_dict里的UNK
     for k, v in final_dict.items():
         final_dict[k] = v[:5]
-        # if len(concept) > 5:
-        #     concept = concept[:5]
-        # else:
-        #     while len(concept) < 5:
-        #         for relation in relations:
-        #             word = relation['lemma_realtion']
-        #             if word not in stop_words:
-        #                 concept.append(word)
+    return final_dict
+
+
+def get_emotion(imgs, counts):
+    """
+    该函数提取每个image下caption中的形容词及副词，并选取每个情感倾向下出现频次最高的前5个词作为该image的某个情感倾向的label
+    """
+    model = spacy.load('en_core_web_sm')
+    emo = defaultdict(Counter)
+    count_thr = 5
+    for img in imgs['utterance_result']:
+        emotion_label = img['emotion_label']
+        spell = img['utterance_spelled']
+        sent = model(spell)
+        adj = [token.lemma_ for token in sent if token.pos_ == 'ADJ']
+        for word in adj:
+            emo[emotion_label].update([word])
+    emo = {k: v.most_common() for k, v in emo.items()}
+    emo_dict = {key: [words[0] for words in list] for key, list in emo.items()}
+    for k, v in emo_dict.items():
+        emo_dict[k] = [w if counts.get(w, 0) > count_thr else 'UNK' for w in emo_dict[k]]
+    final_dict = {key: [word for word in word_list if word != 'UNK'] for key, word_list in emo_dict.items()}
+    for k, v in final_dict.items():
+        final_dict[k] = v[:5]
     return final_dict
 
 
 def build_vocab(imgs, params, stopwords):
+    """
+    该函数对传入的json做最初的处理，包括去除出现次数少于阈值的单词，将需要的信息写入image中
+    """
     count_thr = params['word_count_threshold']
 
     # count up the number of words
@@ -112,20 +129,15 @@ def build_vocab(imgs, params, stopwords):
 
     # lets look at the distribution of lengths as well
     sent_lengths = {}
-    concept_pool = defaultdict(list)                # 创建一个concept pool用来存储按照三元组分类的concept
     for img in imgs:
         concept = get_concept(img, counts, stopwords)
         img['concept'] = concept
-        for k in concept:
-            concept_pool[k].extend(concept[k])
-
-
+        emo = get_emotion(img, counts)
+        img['emotion'] = emo
         for sent in img['utterance_result']:
             txt = sent['tokens'].replace(" ","").strip('[]').split(',')
             nw = len(txt)
             sent_lengths[nw] = sent_lengths.get(nw, 0) + 1
-    for k in concept_pool:
-        concept_pool[k] = list(set(concept_pool[k]))
     max_len = max(sent_lengths.keys())
     print('max length sentence in raw data: ', max_len)
     print('sentence length distribution (count, number of words):')
@@ -141,23 +153,18 @@ def build_vocab(imgs, params, stopwords):
 
     for img in imgs:
         img['final_captions'] = {}
-        img['emo_embedding'] = []
         img['emo_name'] = []
         img['emo_label'] = []
         for num, sent in enumerate(img['utterance_result']):
             emo_name = sent['emotion']
             label = sent['emotion_label']
-            emo_glove = np.load("{0}.npy".format(os.path.join(params['input_emotion'], emo_name)))
             txt = sent['tokens'].strip('[]').replace("'", "").replace('"', '').split(', ')
             caption = [w if counts.get(w, 0) > count_thr else 'UNK' for w in txt]
-            img['emo_embedding'].append(emo_glove)
             img['emo_name'].append(emo_name)
             img['final_captions'][num] = caption
             img['emo_label'].append(label)
             # emo_embedidng.append(emo_glove)
-
-
-    return vocab, concept_pool
+    return vocab
 
 def encode_captions(imgs, params, wtoi):
     """
@@ -171,11 +178,9 @@ def encode_captions(imgs, params, wtoi):
     def get_token_ids(img):
         input_List = []
         output_List = []
-        emotion_embedding = []
         for key in img['final_captions']:
             input_Li = np.zeros((1, max_length + 1), dtype='uint32')
             output_Li = np.zeros((1, max_length + 1), dtype='int32') - 1
-            emotion = emo_embedding[key]
             caption = img['final_captions'][key]
             for k, w in enumerate(caption):
                 if k < max_length:
@@ -188,32 +193,67 @@ def encode_captions(imgs, params, wtoi):
                 output_Li[0, max_length] = wtoi[caption[max_length]]
             input_List.append(input_Li)
             output_List.append(output_Li)
-            emotion_embedding.append(emotion)
-        return input_List, output_List, emotion_embedding
+        return input_List, output_List
 
-    def get_attr_ids(concept):
-        # 将concept_label编码成词表形式，每一个情感倾向对应的concept列表长度都为5
+    def get_concept_ids(concept):
+        """
+        将concepts编码成词表形式，每一个的长度不固定
+        """
         output_list = {}
         for k, v in concept.items():
-            # 不再固定为5，而是依照attr的长度确定
             output_Li = np.zeros((1, len(v)), dtype='int32')
             for num, word in enumerate(v):
                 output_Li[0, num] = wtoi[word]
             output_list[k] = output_Li
         return output_list
 
+    def get_emowords_ids(emowords):
+        """
+        将emo words编码成词表格式，每一个的长度不固定
+        """
+        output_list = {}
+        for k, v in emowords.items():
+            output_Li = np.zeros((1, len(v)), dtype='int32')
+            for num, word in enumerate(v):
+                output_Li[0, num] = wtoi[word]
+            output_list[k] = output_Li
+        return output_list
+
+    def get_id_label(img_id):
+        """
+        将image_id分割后，经由编码，作为一个额外的label。每一个的长度不固定
+        """
+        text = img_id.split('_')[1]
+        model = spacy.load('en_core_web_sm')
+        sent = model(text)
+        adj = [token.lemma_ for token in sent if token.pos_ == 'ADJ']
+        noun = [token.lemma_ for token in sent if token.pos_ == 'NOUN']
+        # adj_list = np.zeros((1, len(adj)), dtype='int32')
+        # for num, word in enumerate(adj):
+        #     adj_list[0, num] = wtoi[word]
+        # noun_list = np.zeros((1, len(noun)), dtype='int32')
+        # for num, word in enumerate(adj):
+        #     noun_list[0, num] = wtoi[word]
+        return adj, noun
+
+
+
+
 
     for img in imgs:
         split = img["split"]
         img_id = img["painting"]
+        art_style = img['art_style']
         n = len(img['final_captions'])
         min_cap_count = min(min_cap_count, n)
-        emo_embedding = img['emo_embedding']
         emo_name = img['emo_name']
         emo_label = img['emo_label']
         concepts = img['concept']
-        attr_gt = get_attr_ids(concepts)
-        input_Li, output_Li, emotion_embedding = get_token_ids(img)
+        emo_word = img['emotion']
+        concept_ids = get_concept_ids(concepts)
+        emoword_ids = get_emowords_ids(emo_word)
+        noun_from_id_ids, adj_from_id_ids = get_id_label(img_id)
+        input_Li, output_Li = get_token_ids(img)
         # for index, s in enumerate(img['final_captions']):
         #     input_Li = np.zeros((1, max_length + 1), dtype='uint32')
         #     output_Li = np.zeros((1, max_length + 1), dtype='int32') - 1
@@ -233,28 +273,18 @@ def encode_captions(imgs, params, wtoi):
                 "image_id": img_id,
                 "tokens_ids": input_Li,
                 "target_ids": output_Li,
-                "emotion_embedding": emotion_embedding,
                 "emo_name": emo_name,
                 "emo_label": emo_label,
                 "concepts": concepts,
-                "attr_gt": attr_gt
+                "concept_ids": concept_ids,
+                "art_style": art_style,
+                "emo_word": emo_word,
+                "emoword_ids": emoword_ids,
+                "noun_from_id_ids": noun_from_id_ids,
+                "adj_from_id_ids": adj_from_id_ids
             }
         datalist[split].append(new_data)
     return datalist
-def get_pool_ids(wtoi, concept_pool):
-    pos_len = len(concept_pool[0])
-    neg_len = len(concept_pool[1])
-    se_len = len(concept_pool[2])
-    print("positive length is:", pos_len)
-    print("negative length is:", neg_len)
-    print("something else length is:", se_len)
-    output_list = {}
-    for k, v in concept_pool.items():
-        output_Li = np.zeros((1, len(v)), dtype='int32')
-        for num, word in enumerate(v):
-            output_Li[0, num] = wtoi[word]
-        output_list[k] = output_Li
-    return output_list
 
 def save_pkl_file(datalist, output_dir):
     for split in datalist:
@@ -319,10 +349,10 @@ def main(params):
     seed(123)  # make reproducible
 
     # create the vocab
-    vocab, concept_pool = build_vocab(imgs, params, stopwords)
+    vocab = build_vocab(imgs, params, stopwords)
     itow = {i + 1: w for i, w in enumerate(vocab)}  # a 1-indexed vocab translation table
     wtoi = {w: i + 1 for i, w in enumerate(vocab)}  # inverse table
-
+    json.dump(wtoi, open(os.path.join(params['output_dir'], "wtoi.json"), "w"))
     print(len(vocab))
     with open(os.path.join(params["output_dir"], "artemis_vocabulary.txt"), "w") as fout:
         for w in vocab:
@@ -330,27 +360,26 @@ def main(params):
 
     # encode captions in large arrays, ready to ship to hdf5 file
     datalist = encode_captions(imgs, params, wtoi)
-    concept_pool_ids = get_pool_ids(wtoi, concept_pool)
     # create output file
     save_pkl_file(datalist, params['output_dir'])
     save_split_json_file(imgs, params['output_dir'])
-
-    json.dump(concept_pool, open(os.path.join(params['output_dir'], "concept_pool.json"), "w"))
-    pkl.dump(concept_pool_ids, open(os.path.join(params['output_dir'], "concept_pool_ids.pkl"), "wb"))
+    #
+    # json.dump(concept_pool, open(os.path.join(params['output_dir'], "concept_pool.json"), "w"))
+    # pkl.dump(concept_pool_ids, open(os.path.join(params['output_dir'], "concept_pool_ids.pkl"), "wb"))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # input json
-    parser.add_argument('--input_json', default="/home/wyf/artemis_fullcombined.json", help='input json file to process into hdf5')
-    parser.add_argument('--output_dir', default="/home/wyf/open_source_dataset/artemis_dataset/4.10/", help='output directory')
+    parser.add_argument('--input_json', default="/home/wyf/artemis_100.json", help='input json file to process into hdf5')
+    parser.add_argument('--output_dir', default="/home/wyf/open_source_dataset/for_debug/4.20/", help='output directory')
     parser.add_argument('--input_emotion', default = "/home/wyf/emotion_embedding/", help='get emotion embedding file')
 
     # options
-    parser.add_argument('--max_length', default=30, type=int,
+    parser.add_argument('--max_length', default=17, type=int,
                         help='max length of a caption, in number of words. captions longer than this get clipped.')
-    parser.add_argument('--word_count_threshold', default=3, type=int,
+    parser.add_argument('--word_count_threshold', default=5, type=int,
                         help='only words that occur more than this number of times will be put in vocab')
 
     args = parser.parse_args()

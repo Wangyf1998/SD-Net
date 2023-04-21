@@ -50,7 +50,7 @@ class LabelSmoothing(nn.Module):
         return loss
 
     def forward(self, outputs_dict):
-        ret  = {}
+        ret = {}
         if kfg.G_LOGITS in outputs_dict:
             logits = outputs_dict[kfg.G_LOGITS]
             targets = outputs_dict[kfg.G_TARGET_IDS]
